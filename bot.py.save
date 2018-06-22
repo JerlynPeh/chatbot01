@@ -1,0 +1,7 @@
+import telebot
+import parser
+
+#main variables
+TOKEN = '572209278:AAGDaLmTlzs7OlssY1IUWxP75gwIFEdgt-E'
+bot = telenot.TeleBot(TOKEN)
+
