@@ -8,43 +8,14 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-TOKEN = '572209278:AAGDaLmTlzs7OlssY1IUWxP75gwIFEdgt-E'
+TOKEN = 'YOUR TOKEN'
 
-STEP = 0
-CHOICE = [0, 0]
+
+
 tempNum = 0
 
-""" 
-codes from  https://github.com/python-telegram-bot/python-telegram-bot/blob/master/examples/inlinekeyboard.py
-"""
-'''
-def start(bot, update):
-	keyboard = [[InlineKeyboardButton("Option 1", callback_data='1'),
-                 InlineKeyboardButton("Option 2", callback_data='2')],
-
-                [InlineKeyboardButton("Option 3", callback_data='3')]]
-
-	reply_markup = InlineKeyboardMarkup(keyboard)
-
-	update.message.reply_text('Please choose:', reply_markup=reply_markup)
-
-def button(bot, update):
-	query = update.callback_query
-
-	bot.edit_message_text(text="Selected option: {}".format(query.data),
-                          chat_id=query.message.chat_id,
-                          message_id=query.message.message_id)
-
-
-def help(bot, update):
-	update.message.reply_text("Use /start to test this bot.")
-
-
-def error(bot, update, error):
-	"""Log Errors caused by Updates."""
-	logger.warning('Update "%s" caused error "%s"', update, error)
-'''
-
+FLIST = []
+SLIST = []
 
 """ 
 My first codes  below
@@ -54,89 +25,82 @@ My first codes  below
 
 def start(bot, update):
 	print 'start()'
-	global STEP
 
-	STEP = 1
-	keyboard = [[InlineKeyboardButton("Stall", callback_data='001'),
-                 InlineKeyboardButton("Food", callback_data='010')],
-
-                [InlineKeyboardButton("Both", callback_data='011'),InlineKeyboardButton("None", callback_data='000')],
-[InlineKeyboardButton("Its okay. Thanks!", callback_data='x')]
-]
-
-	reply_markup = InlineKeyboardMarkup(keyboard)
-
-	update.message.reply_text('Hi there! Seems like you need a hand deciding what to eat today. \n Which have you decided so far?', reply_markup=reply_markup)
-
-def button(bot, update):
-	print 'button()'
-	global CHOICE
-	query = update.callback_query
-	uchoice = query.data
-	#if choice == 'x': end
-
-	if uchoice == '001':
-		CHOICE[0] = 1
-
-		bot.edit_message_text(text='How many FOOD DISHES are you deciding between? (Enter a digit/number)',chat_id=query.message.chat_id,message_id=query.message.message_id)	
-		
-	elif uchoice == '010':
-		CHOICE[1] = 2
-		
-		bot.edit_message_text(text='How many STALLS are you choosing from? (Enter a digit/number)',chat_id=query.message.chat_id,message_id=query.message.message_id)
-
-	elif uchoice == '011':
-		CHOICE = [1, 2]
-		bot.edit_message_text(text='logic1 for this is coming soon! Wait for it.',chat_id=query.message.chat_id,message_id=query.message.message_id)
-
-	else:
-		bot.edit_message_text(text='logic2 for this is coming soon! Wait for it.',chat_id=query.message.chat_id,message_id=query.message.message_id)
-		
-
-	
-	#bot.edit_message_text(text="Selected option: {}".format(query.data),chat_id=query.message.chat_id,message_id=query.message.message_id)	
+	update.message.reply_text('Hi there! Seems like you need a hand deciding what to eat today. \n Tell me your choices in either of the following formats: \n 1. porridge, rice, yellow noodles  \n 2. stall 1, stall 2, stall 3 \n 3. Stall 1-porridge, Kfc-mashed potato, Seng Kee-herbal mee sua')
 
 
-def get_user_reply(bot, update):
-	print 'get_user_reply()'
+def process_user_reply(bot, update):
+	print 'process_user_reply()'
 	# validate Y/N input
 
-	global STEP, tempNum, CHOICE
+	global FLIST, SLIST, tempNum
 
 	#TODO: validate to ensure int and not crazy number and not empty 
 
-
-	inputVal = int(update.message.text)
-	print 'update.message.text, len:'
+	update.message.reply_text('Hold on~ Bot is thinking which you should choose~ Give bot awhile...')
+	
 	print update.message.text
-	print len(update.message.text)
 	
-	choice_count = CHOICE[0] + CHOICE[1]
-	
-	if STEP == 1 and inputVal > 1:	
-		tempNum = inputVal
-		STEP = 2
+
+	inputData =  update.message.text
+
+	if len(inputData) == 0:
+		update.message.reply_text('Oops, seems like theres nothing to choose from. Enter /start to start again!')
+		
+
+	#reinitialize the global variables for this session
+	SLIST =[]
+	FLIST = []
+	tempNum = 0
+
+	if (validate_input(inputData)):
+		try:
+			if '-' in inputData:
+				SLpairs = inputData.split(',')
+			
+				for pair in SLpairs:
+					SLIST.append(pair.split('-')[0].strip())
+					FLIST.append(pair.split('-')[1].strip())
+				#gotta ensure both lists have same length
+
+				if len(SLIST) != len(FLIST): raise ValueError('list lengths dont match!')
+				print 'SLIST len: ' + repr(len(SLIST))
+				print 'FLIST len: ' + repr(len(FLIST))
+			else:
+				FLIST = inputData.split(',')
+				print 'FLIST len: ' + repr(len(FLIST))
+
+			if (len(SLIST) <= 1 and len(FLIST) <= 1) or len(FLIST) <= 1: 
+				update.message.reply_text('Seems like you have decided. So Toodles!')
+				cancel(bot, update)
+
+			tempNum = len(FLIST)-1
+			update.message.reply_text('Enter /gen to choose an option for you!')
+
+		except Exception as e:
+			update.message.reply_text('Oops! An error occured somewhere. Please use /start to try again. What a bummer :( ')
 	else:
-		print 'tomato: validate user input'
+		update.message.reply_text('Enter your choices in the suggested format please!')		
 		
-	if STEP == 2:
-		
+			
+	
+def validate_input(inputStr):
+	if (',' not in inputStr) or ('-' in inputStr and ',' not in inputStr) or len(inputStr)< 4: return False
+	
+	return True
 
-		if choice_count == 1:
-			update.message.reply_text('Next, assign each food/dish a number between 1 to ' + repr(tempNum) + '. \nEnter /gen when you have done so.')
-			print 'banana'
 		
-		elif choice_count == 2:
-			update.message.reply_text('Next, assign a number to each Stall between 1 to ' + repr(tempNum) + '. \nEnter /gen when your done!')
-			print 'papaya'
-		else:
-			print 'logic coming soon.'
-		STEP = 3
-
 def generate_random(bot, update):
 	print 'generate_random()'
 	update.message.reply_text('~Bzzt Bzzt~')
-	update.message.reply_text('How about '+ repr(random.randint(1,tempNum)) + '?')
+	
+
+	opt = random.randint(0,tempNum)
+	if len(SLIST) > 1:
+		
+		update.message.reply_text('Hmm.. How about '+ SLIST[opt].upper() + ' ' + FLIST[opt].upper() + '?')
+	else:
+		update.message.reply_text('Perhaps '+ FLIST[opt].upper() + '?')
 	
 		
  	
@@ -159,15 +123,17 @@ def main():
         dispatcher = updater.dispatcher
         print('bot created.')
 
-	getUserReply_handler = MessageHandler(Filters.text, get_user_reply)
+	procUserReply_handler = MessageHandler(Filters.text, process_user_reply)
 	
 
 	dispatcher.add_handler(CommandHandler('start', start))
-	dispatcher.add_handler(CallbackQueryHandler(button))
 	dispatcher.add_handler(CommandHandler('gen', generate_random))
+	dispatcher.add_handler(CommandHandler('done', cancel))
+	dispatcher.add_handler(CommandHandler('ok', cancel))
 	
-	dispatcher.add_handler(getUserReply_handler)
+	dispatcher.add_handler(procUserReply_handler)
 	dispatcher.add_error_handler(error)
+	dispatcher.add_error_handler(cancel)
 
 	# Start the Bot
 	updater.start_polling()
